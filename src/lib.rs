@@ -1,8 +1,9 @@
 use std::fmt::{Display, Formatter};
 use std::os::raw::{c_uchar, c_void};
+use std::os::unix::prelude::OsStrExt;
 use std::path::PathBuf;
 
-use libc::{c_char, fclose, fflush, FILE, fopen, fwrite, malloc, size_t};
+use libc::{fclose, fflush, FILE, fopen, fwrite, malloc, size_t};
 use thiserror::Error;
 
 use libpcapng_sys::{libpcapng_custom_data_block_size, libpcapng_custom_data_block_write, libpcapng_write_enhanced_packet_to_file, libpcapng_write_enhanced_packet_with_time_to_file, libpcapng_write_header_to_file, PCAPNG_PEN};
@@ -32,9 +33,9 @@ pub struct PcapNgWriter {
 }
 
 impl PcapNgWriter {
-    pub fn new<P: AsRef<PathBuf>>(path: P, mode: PcapWriterMode) -> Self {
+    pub fn new<P: Into<PathBuf>>(path: P, mode: PcapWriterMode) -> Self {
         PcapNgWriter {
-            file_path: path.to_owned(),
+            file_path: path.into(),
             file_handle: None,
             mode,
         }
@@ -42,14 +43,18 @@ impl PcapNgWriter {
 
     pub fn open(&mut self) -> Result<()> {
         unsafe {
-            let path = format!("{}\0", self.file_path.to_str().unwrap()).as_ptr() as *const c_char;
-            let mode = format!("{}\0", self.mode).as_ptr() as *const c_char;
-            let fh = fopen(path, mode);
+            let mut path_bytes = self.file_path.as_os_str().as_bytes().to_vec();
+            path_bytes.push(0);
+            let fh = match self.mode {
+                PcapWriterMode::Write => fopen(path_bytes.as_ptr(), "wb\0".as_ptr()),
+                PcapWriterMode::Append => fopen(path_bytes.as_ptr(), "a\0".as_ptr()),
+            };
+
             if fh.is_null() {
                 Err(FileOpenError)
             } else {
                 match self.mode {
-                    PcapWriterMode::Write => libpcapng_write_header_to_file(fh),
+                    PcapWriterMode::Write => { libpcapng_write_header_to_file(fh); }
                     PcapWriterMode::Append => (),
                 }
                 self.file_handle = Some(fh);
@@ -124,8 +129,13 @@ impl Display for PcapWriterMode {
 
 #[cfg(test)]
 mod tests {
+    use crate::{PcapNgWriter, PcapWriterMode};
+
     #[test]
     fn it_works() {
-        println!("hello world");
+        let mut pcap_writer = PcapNgWriter::new("test.pcapng", PcapWriterMode::Write);
+        pcap_writer.open().expect("issue opening file");
+        pcap_writer.write_custom("this is a test".as_bytes().to_vec()).expect("issue writing custom frame");
+        pcap_writer.close();
     }
 }

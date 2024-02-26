@@ -23,5 +23,5 @@ pkg-config = "0.3.30"
 cmake = { version = "0.1.50", optional = true }
 
 [features]
-#default = ["static"]
+default = ["static"]
 static = ["cmake"]
