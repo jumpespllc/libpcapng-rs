@@ -1,0 +1,27 @@
+[package]
+name = "libpcapng-sys"
+version = "0.1.0"
+edition = "2021"
+authors = ["Bob R <nop@jumpesp.com>"]
+build = "build.rs"
+links = "pcapng"
+repository = "https://github.com/jumpespllc/libpcapng-rs"
+license = "MIT"
+description = "Native bindings to the libpcapng library"
+keywords = ["libpcapng", "pcap", "pcapng"]
+categories = ["external-ffi-bindings"]
+
+[lib]
+name = "libpcapng_sys"
+path = "src/lib.rs"
+
+[dependencies]
+libc = "0.2.153"
+
+[build-dependencies]
+pkg-config = "0.3.30"
+cmake = { version = "0.1.50", optional = true }
+
+[features]
+#default = ["static"]
+static = ["cmake"]
