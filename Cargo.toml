@@ -12,6 +12,8 @@ categories = ["api-bindings"]
 
 [dependencies]
 libpcapng-sys = {path="libpcapng-sys"}
+libc = "0.2.153"
+thiserror = "1.0.57"
 
 [workspace]
 members = ["libpcapng-sys"]
