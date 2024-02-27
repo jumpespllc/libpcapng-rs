@@ -1,0 +1,3 @@
+[submodule "libpcapng-sys/libpcapng"]
+	path = libpcapng-sys/libpcapng
+	url = https://github.com/stricaud/libpcapng.git
