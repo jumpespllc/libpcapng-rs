@@ -21,11 +21,21 @@ fn build() {
         .arg("init")
         .spawn()
         .expect("error executing git command");
-    let exit_status = proc.wait().expect("error waiting on git command to finish");
-    if !exit_status.success() {
-        panic!("error cloning libpcapng code");
+    let s = proc.wait().unwrap();
+    if !s.success() {
+        panic!("failed to init submodule")
     }
-    let dst = Config::new("../libpcapng").build_target("pcapng_static").build();
+    let mut proc = Command::new("git")
+        .arg("submodule")
+        .arg("update")
+        .spawn()
+        .expect("error executing git command");
+    let s = proc.wait().unwrap();
+    if !s.success() {
+        panic!("failed to init submodule")
+    }
+
+    let dst = Config::new("libpcapng").build_target("pcapng_static").build();
     println!("cargo:rustc-link-search=native={}/build/lib", dst.display());
     println!("cargo:rustc-link-lib=static=pcapng_static");
 }

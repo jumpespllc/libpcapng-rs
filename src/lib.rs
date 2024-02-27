@@ -5,7 +5,7 @@ use std::os::unix::prelude::OsStrExt;
 use std::path::PathBuf;
 use std::ptr::null_mut;
 
-use libc::{fclose, fflush, FILE, fopen, fwrite, malloc, size_t};
+use libc::{c_char, fclose, fflush, FILE, fopen, fwrite, malloc, size_t};
 use thiserror::Error;
 
 use libpcapng_sys::{libpcapng_custom_data_block_size, libpcapng_custom_data_block_write, libpcapng_fp_read, libpcapng_write_enhanced_packet_to_file, libpcapng_write_enhanced_packet_with_time_to_file, libpcapng_write_header_to_file, PCAPNG_PEN};
@@ -54,9 +54,9 @@ impl PcapNg {
             let mut path_bytes = self.file_path.as_os_str().as_bytes().to_vec();
             path_bytes.push(0);
             let fh = match self.mode {
-                PcapNgOpenMode::Write => fopen(path_bytes.as_ptr(), "wb\0".as_ptr()),
-                PcapNgOpenMode::Append => fopen(path_bytes.as_ptr(), "a\0".as_ptr()),
-                PcapNgOpenMode::Read => fopen(path_bytes.as_ptr(), "r\0".as_ptr()),
+                PcapNgOpenMode::Write => fopen(path_bytes.as_ptr() as *const i8, "wb\0".as_ptr() as *const c_char),
+                PcapNgOpenMode::Append => fopen(path_bytes.as_ptr() as *const i8, "a\0".as_ptr() as *const c_char),
+                PcapNgOpenMode::Read => fopen(path_bytes.as_ptr() as *const i8, "r\0".as_ptr() as *const c_char),
             };
 
             if fh.is_null() {
@@ -188,7 +188,7 @@ mod tests {
     }
 
     #[test]
-    fn it_works() {
+    fn write_and_read_test() {
         let mut pcap_writer = PcapNg::new("test.pcapng", PcapNgOpenMode::Write);
         pcap_writer.open().expect("issue opening file");
         pcap_writer.write_custom("this is a test".as_bytes().to_vec()).expect("issue writing custom frame");

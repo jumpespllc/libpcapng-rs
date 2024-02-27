@@ -12,6 +12,13 @@ Under Construction...
 
 static: toggles whether to statically compile in libpcapng c library
 
+# Pre Requisites
+
+MacOS
+```angular2html
+brew install wandio cmake pybind11
+```
+
 # Example
 
 ```rust
