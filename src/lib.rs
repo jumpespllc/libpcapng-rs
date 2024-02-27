@@ -1,14 +1,16 @@
 use std::fmt::{Display, Formatter};
-use std::os::raw::{c_uchar, c_void};
+use std::mem::transmute;
+use std::os::raw::{c_int, c_uchar, c_void};
 use std::os::unix::prelude::OsStrExt;
 use std::path::PathBuf;
+use std::ptr::null_mut;
 
 use libc::{fclose, fflush, FILE, fopen, fwrite, malloc, size_t};
 use thiserror::Error;
 
-use libpcapng_sys::{libpcapng_custom_data_block_size, libpcapng_custom_data_block_write, libpcapng_write_enhanced_packet_to_file, libpcapng_write_enhanced_packet_with_time_to_file, libpcapng_write_header_to_file, PCAPNG_PEN};
+use libpcapng_sys::{libpcapng_custom_data_block_size, libpcapng_custom_data_block_write, libpcapng_fp_read, libpcapng_write_enhanced_packet_to_file, libpcapng_write_enhanced_packet_with_time_to_file, libpcapng_write_header_to_file, PCAPNG_PEN};
 
-use crate::PcapNgError::{FileNotOpen, FileOpenError};
+use crate::PcapNgError::{FileNotOpen, FileOpenError, OperationOnlySupportedInReadMode, OperationOnlySupportedInWriteMode};
 
 #[derive(Debug, Error)]
 pub enum PcapNgError {
@@ -18,23 +20,29 @@ pub enum PcapNgError {
     FileCloseError,
     #[error("file has not been opened")]
     FileNotOpen,
+    #[error("this operation is only supported in read mode")]
+    OperationOnlySupportedInReadMode,
+    #[error("this operation is only supported in write or append mode")]
+    OperationOnlySupportedInWriteMode,
     #[error("unknown error {0}")]
     UnknownError(String),
 }
 
+pub type VoidPtr = *mut c_void;
+pub type CbFn = fn(u32, u32, u32, Vec<u8>);
 pub type Error = PcapNgError;
 pub type Result<T> = std::result::Result<T, Error>;
 
 
-pub struct PcapNgWriter {
+pub struct PcapNg {
     file_path: PathBuf,
     file_handle: Option<*mut FILE>,
-    mode: PcapWriterMode,
+    mode: PcapNgOpenMode,
 }
 
-impl PcapNgWriter {
-    pub fn new<P: Into<PathBuf>>(path: P, mode: PcapWriterMode) -> Self {
-        PcapNgWriter {
+impl PcapNg {
+    pub fn new<P: Into<PathBuf>>(path: P, mode: PcapNgOpenMode) -> Self {
+        PcapNg {
             file_path: path.into(),
             file_handle: None,
             mode,
@@ -46,16 +54,17 @@ impl PcapNgWriter {
             let mut path_bytes = self.file_path.as_os_str().as_bytes().to_vec();
             path_bytes.push(0);
             let fh = match self.mode {
-                PcapWriterMode::Write => fopen(path_bytes.as_ptr(), "wb\0".as_ptr()),
-                PcapWriterMode::Append => fopen(path_bytes.as_ptr(), "a\0".as_ptr()),
+                PcapNgOpenMode::Write => fopen(path_bytes.as_ptr(), "wb\0".as_ptr()),
+                PcapNgOpenMode::Append => fopen(path_bytes.as_ptr(), "a\0".as_ptr()),
+                PcapNgOpenMode::Read => fopen(path_bytes.as_ptr(), "r\0".as_ptr()),
             };
 
             if fh.is_null() {
                 Err(FileOpenError)
             } else {
                 match self.mode {
-                    PcapWriterMode::Write => { libpcapng_write_header_to_file(fh); }
-                    PcapWriterMode::Append => (),
+                    PcapNgOpenMode::Write => { libpcapng_write_header_to_file(fh); }
+                    _ => (),
                 }
                 self.file_handle = Some(fh);
                 Ok(())
@@ -63,7 +72,11 @@ impl PcapNgWriter {
         }
     }
 
+
     pub fn write_custom(&mut self, data: Vec<u8>) -> Result<()> {
+        if self.mode == PcapNgOpenMode::Read {
+            return Err(OperationOnlySupportedInWriteMode);
+        }
         let data_len = data.len() as size_t;
         unsafe {
             let buffer_size = libpcapng_custom_data_block_size(data_len);
@@ -79,6 +92,9 @@ impl PcapNgWriter {
         }
     }
     pub fn write_packet(&mut self, data: Vec<u8>) -> Result<()> {
+        if self.mode == PcapNgOpenMode::Read {
+            return Err(OperationOnlySupportedInWriteMode);
+        }
         let data_len = data.len() as size_t;
         let data_bytes = data.as_ptr() as *mut c_uchar;
         unsafe {
@@ -90,7 +106,26 @@ impl PcapNgWriter {
             }
         }
     }
+
+    pub fn read_packats(&mut self, callback_fn: Option<CbFn>) -> Result<()> {
+        if self.mode != PcapNgOpenMode::Read {
+            return Err(OperationOnlySupportedInReadMode);
+        }
+        unsafe {
+            if let Some(fh) = self.file_handle {
+                //let buffer = malloc(10) as *mut c_void;
+                let cbfn = callback_fn.map(|cbfn| { std::mem::transmute::<CbFn, VoidPtr>(cbfn) }).unwrap_or(null_mut());
+                libpcapng_fp_read(fh, Some(callback), cbfn);
+                Ok(())
+            } else {
+                Err(FileNotOpen)
+            }
+        }
+    }
     pub fn write_packet_with_time(&mut self, data: Vec<u8>, timestamp: u32) -> Result<()> {
+        if self.mode == PcapNgOpenMode::Read {
+            return Err(OperationOnlySupportedInWriteMode);
+        }
         let data_len = data.len() as size_t;
         let data_bytes = data.as_ptr() as *mut c_uchar;
         unsafe {
@@ -113,29 +148,55 @@ impl PcapNgWriter {
     }
 }
 
-pub enum PcapWriterMode {
-    Write,
-    Append,
+
+#[no_mangle]
+unsafe extern "C" fn callback(block_counter: u32, block_type: u32, block_total_length: u32, data: *mut c_uchar, userdata: *mut c_void) -> c_int {
+    let bytes: Vec<u8> = std::slice::from_raw_parts(data, block_total_length as usize - 8).iter().map(|x| { x.to_owned() as u8 }).collect();
+    if let Some(fn_ptr) = userdata.as_mut() {
+        let cb = transmute::<VoidPtr, CbFn>(fn_ptr);
+        cb(block_counter, block_type, block_total_length, bytes.to_owned());
+    }
+    0
 }
 
-impl Display for PcapWriterMode {
+#[derive(Debug, Eq, PartialEq)]
+pub enum PcapNgOpenMode {
+    Write,
+    Append,
+    Read,
+}
+
+impl Display for PcapNgOpenMode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            PcapWriterMode::Write => write!(f, "{}", "wb".to_string()),
-            PcapWriterMode::Append => write!(f, "{}", "a".to_string()),
+            PcapNgOpenMode::Write => write!(f, "{}", "wb".to_string()),
+            PcapNgOpenMode::Append => write!(f, "{}", "a".to_string()),
+            PcapNgOpenMode::Read => write!(f, "{}", "r".to_string()),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{PcapNgWriter, PcapWriterMode};
+    use std::fs;
+
+    use crate::{PcapNg, PcapNgOpenMode};
+
+    fn callback_rs(block_counter: u32, block_type: u32, block_total_length: u32, bytes: Vec<u8>) {
+        println!("hello world");
+        println!("block_counter: {}, block_type: {}, block_total_length: {} bytes {:02X?}", block_counter, block_type, block_total_length, bytes);
+    }
 
     #[test]
     fn it_works() {
-        let mut pcap_writer = PcapNgWriter::new("test.pcapng", PcapWriterMode::Write);
+        let mut pcap_writer = PcapNg::new("test.pcapng", PcapNgOpenMode::Write);
         pcap_writer.open().expect("issue opening file");
         pcap_writer.write_custom("this is a test".as_bytes().to_vec()).expect("issue writing custom frame");
         pcap_writer.close();
+        let mut pcap_writer = PcapNg::new("test.pcapng", PcapNgOpenMode::Read);
+        pcap_writer.open().expect("issue opening file");
+        pcap_writer.read_packats(Some(callback_rs)).unwrap();
+        pcap_writer.close();
+        fs::remove_file("test.pcapng").unwrap();
     }
 }
