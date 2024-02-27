@@ -1,11 +1,11 @@
-use std::fmt::{Display};
 use std::mem::transmute;
 use std::os::raw::{c_int, c_uchar, c_void};
 use std::os::unix::prelude::OsStrExt;
 use std::path::PathBuf;
 use std::ptr::null_mut;
-
-use libc::{c_char, fclose, fflush, FILE, fopen, fwrite, malloc, size_t};
+#[cfg(feature = "macos")]
+use libc::c_char;
+use libc::{fclose, fflush, FILE, fopen, fwrite, malloc, size_t};
 use thiserror::Error;
 
 use libpcapng_sys::{libpcapng_custom_data_block_size, libpcapng_custom_data_block_write, libpcapng_fp_read, libpcapng_write_enhanced_packet_to_file, libpcapng_write_enhanced_packet_with_time_to_file, libpcapng_write_header_to_file, PCAPNG_PEN};
@@ -55,7 +55,7 @@ impl PcapNg {
             path_bytes.push(0);
             let fh = match self.mode {
                 #[cfg(not(feature="macos"))]
-                PcapNgOpenMode::Append => fopen(path_bytes.as_ptr(), "a\0".as_ptr()),
+                PcapNgOpenMode::Write => fopen(path_bytes.as_ptr(), "wb\0".as_ptr()),
                 #[cfg(feature="macos")]
                 PcapNgOpenMode::Write => fopen(path_bytes.as_ptr() as *const i8, "wb\0".as_ptr() as *const c_char),
                 #[cfg(not(feature="macos"))]
