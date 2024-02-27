@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display};
 use std::mem::transmute;
 use std::os::raw::{c_int, c_uchar, c_void};
 use std::os::unix::prelude::OsStrExt;
@@ -107,15 +107,15 @@ impl PcapNg {
         }
     }
 
-    pub fn read_packats(&mut self, callback_fn: Option<CbFn>) -> Result<()> {
+    pub fn read_packets(&mut self, callback_fn: Option<CbFn>) -> Result<()> {
         if self.mode != PcapNgOpenMode::Read {
             return Err(OperationOnlySupportedInReadMode);
         }
         unsafe {
             if let Some(fh) = self.file_handle {
                 //let buffer = malloc(10) as *mut c_void;
-                let cbfn = callback_fn.map(|cbfn| { std::mem::transmute::<CbFn, VoidPtr>(cbfn) }).unwrap_or(null_mut());
-                libpcapng_fp_read(fh, Some(callback), cbfn);
+                let callback_function = callback_fn.map(|callback_function| { transmute::<CbFn, VoidPtr>(callback_function) }).unwrap_or(null_mut());
+                libpcapng_fp_read(fh, Some(callback), callback_function);
                 Ok(())
             } else {
                 Err(FileNotOpen)
@@ -166,16 +166,6 @@ pub enum PcapNgOpenMode {
     Read,
 }
 
-impl Display for PcapNgOpenMode {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PcapNgOpenMode::Write => write!(f, "{}", "wb".to_string()),
-            PcapNgOpenMode::Append => write!(f, "{}", "a".to_string()),
-            PcapNgOpenMode::Read => write!(f, "{}", "r".to_string()),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -195,7 +185,7 @@ mod tests {
         pcap_writer.close();
         let mut pcap_writer = PcapNg::new("test.pcapng", PcapNgOpenMode::Read);
         pcap_writer.open().expect("issue opening file");
-        pcap_writer.read_packats(Some(callback_rs)).unwrap();
+        pcap_writer.read_packets(Some(callback_rs)).unwrap();
         pcap_writer.close();
         fs::remove_file("test.pcapng").unwrap();
     }
