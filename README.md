@@ -15,9 +15,15 @@ static: toggles whether to statically compile in libpcapng c library
 # Pre Requisites
 
 MacOS
-```angular2html
+```
 brew install wandio cmake pybind11
 ```
+
+Debian
+```bash
+sudo apt install build-essential cmake libwandio1 libwandio1-dev pybind11-dev python3-pybind11
+```
+
 
 # Example
 
