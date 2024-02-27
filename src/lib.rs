@@ -54,8 +54,17 @@ impl PcapNg {
             let mut path_bytes = self.file_path.as_os_str().as_bytes().to_vec();
             path_bytes.push(0);
             let fh = match self.mode {
+                #[cfg(not(feature="macos"))]
+                PcapNgOpenMode::Append => fopen(path_bytes.as_ptr(), "a\0".as_ptr()),
+                #[cfg(feature="macos")]
                 PcapNgOpenMode::Write => fopen(path_bytes.as_ptr() as *const i8, "wb\0".as_ptr() as *const c_char),
+                #[cfg(not(feature="macos"))]
+                PcapNgOpenMode::Append => fopen(path_bytes.as_ptr(), "a\0".as_ptr()),
+                #[cfg(feature="macos")]
                 PcapNgOpenMode::Append => fopen(path_bytes.as_ptr() as *const i8, "a\0".as_ptr() as *const c_char),
+                #[cfg(not(feature="macos"))]
+                PcapNgOpenMode::Read => fopen(path_bytes.as_ptr(), "r\0".as_ptr()),
+                #[cfg(feature="macos")]
                 PcapNgOpenMode::Read => fopen(path_bytes.as_ptr() as *const i8, "r\0".as_ptr() as *const c_char),
             };
 
