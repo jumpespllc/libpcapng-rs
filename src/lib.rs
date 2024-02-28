@@ -51,23 +51,34 @@
 //! ### Example Code
 //! ```rust
 //! use libpcapng_rs::{PcapNg, PcapNgOpenMode};
-//
-// fn main() {
-//     let mut pcap_writer = PcapNg::new("test.pcapng", PcapNgOpenMode::Write);
-//     pcap_writer.open().expect("issue opening file");
-//     pcap_writer.write_custom("this is a test".as_bytes().to_vec()).expect("issue writing custom frame");
-//     pcap_writer.close();
-//     let mut pcap_writer = PcapNg::new("test.pcapng", PcapNgOpenMode::Read);
-//     pcap_writer.open().expect("issue opening file");
-//     pcap_writer.read_packets(Some(callback_rs)).unwrap();
-//     pcap_writer.close();
-//     fs::remove_file("test.pcapng").unwrap();
-// }
-//
-// fn callback_rs(block_counter: u32, block_type: u32, block_total_length: u32, bytes: Vec<u8>) {
-//     println!("hello world");
-//     println!("block_counter: {}, block_type: {}, block_total_length: {} bytes {:02X?}", block_counter, block_type, block_total_length, bytes);
-// }
+//! use std::fs;
+//!
+//! fn main() {
+//!     let mut pcap_writer = PcapNg::new("test.pcapng", PcapNgOpenMode::Write);
+//!     pcap_writer.open().expect("issue opening file");
+//!     pcap_writer.write_custom("this is a test".as_bytes().to_vec()).expect("issue writing custom frame");
+//!     pcap_writer.close();
+//!     let mut pcap_writer = PcapNg::new("test.pcapng", PcapNgOpenMode::Read);
+//!     pcap_writer.open().expect("issue opening file");
+//!     pcap_writer.read_packets(Some(callback_rs)).unwrap();
+//!     pcap_writer.close();
+//!     fs::remove_file("test.pcapng").unwrap();
+//! }
+//!
+//! fn callback_rs(block_counter: u32, block_type: u32, block_total_length: u32, bytes: Vec<u8>) {
+//!     println!("hello world");
+//!     println!("block_counter: {}, block_type: {}, block_total_length: {} bytes {:02X?}", block_counter, block_type, block_total_length, bytes);
+//! }
+//! ```
+//!
+//! ### Example Output
+//! ```text
+//! hello world
+//! block_counter: 1, block_type: 168627466, block_total_length: 28 bytes [4D, 3C, 2B, 1A, 01, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 1C, 00, 00, 00]
+//! hello world
+//! block_counter: 2, block_type: 1, block_total_length: 20 bytes [65, 00, 00, 00, 00, 00, 00, 00, 14, 00, 00, 00]
+//! hello world
+//! block_counter: 3, block_type: 2989, block_total_length: 32 bytes [69, 7A, 00, 00, 74, 68, 69, 73, 20, 69, 73, 20, 61, 20, 74, 65, 73, 74, 00, 00, 20, 00, 00, 00]
 //! ```
 //!
 
