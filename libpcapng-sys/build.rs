@@ -1,3 +1,4 @@
+use std::env;
 #[cfg(feature = "static")]
 use std::process::Command;
 
@@ -16,7 +17,8 @@ fn build() {
 
 #[cfg(feature = "static")]
 fn build() {
-    let mut proc = Command::new("git")
+    let out_dir = env::var("OUT_DIR").unwrap();
+    let mut proc = Command::new("git").current_dir(out_dir.to_owned())
         .arg("clone")
         .arg("https://github.com/stricaud/libpcapng.git")
         .spawn()
@@ -26,7 +28,7 @@ fn build() {
         panic!("failed to init submodule")
     }
 
-    let dst = Config::new("libpcapng").build_target("pcapng_static").build();
+    let dst = Config::new(format!("{}/libpcapng",out_dir)).build_target("pcapng_static").build();
     println!("cargo:rustc-link-search=native={}/build/lib", dst.display());
     println!("cargo:rustc-link-lib=static=pcapng_static");
 }
