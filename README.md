@@ -1,27 +1,44 @@
-# Rust Bindings for [libpcapng](https://github.com/stricaud/libpcapng)
+# API Wrapper for [libpcapng](https://github.com/stricaud/libpcapng)
 
-Under Construction...
-
-## Modules
-
-`libpcapng-rs` The main module for interfacing with
-
-`libpcapng-sys` The bindings to the native c library
+## The library
+`libpcapng-rs` provides a Rust interface to [libpcapng](https://github.com/stricaud/libpcapng).
 
 ## Features
 
-static: toggles whether to statically compile in libpcapng c library
+The main features provided at the moment are:
 
-# Pre Requisites
+- Create new PCAP file
+- Append to existing PCAP file
+- Write network packet frames with and without a timestamp
+- Write custom frames
+- Read frames from pcap
 
-MacOS
+## Building
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+libpcapng_rs = { version = "0.1", features = ["static"] }
+```
+
+This crate will compile libpcapng from sources and link it statically to
+your executable. To compile libpcapng you'll need:
+
+* the GNU toolchain
+* GNU `make`
+* `wandio`
+* `pybind11`
+* `cmake`
+
+### MacOS
 ```
 brew install wandio cmake pybind11
 ```
 
-Debian
+### Debian
 ```bash
-sudo apt install build-essential cmake libwandio1 libwandio1-dev pybind11-dev python3-pybind11
+sudo apt-get install build-essential cmake libwandio1 libwandio1-dev pybind11-dev python3-pybind11
 ```
 
 
