@@ -3,7 +3,7 @@ use std::os::raw::{c_int, c_uchar, c_void};
 use std::path::PathBuf;
 use std::ptr::null_mut;
 use std::os::unix::prelude::OsStrExt;
-#[cfg(feature = "macos")]
+#[cfg(not(feature = "debian"))]
 use libc::c_char;
 use libc::{fclose, fflush, FILE, fopen, fwrite, malloc, size_t};
 use libpcapng_sys::{libpcapng_custom_data_block_size, libpcapng_custom_data_block_write, libpcapng_fp_read, libpcapng_write_enhanced_packet_to_file, libpcapng_write_enhanced_packet_with_time_to_file, libpcapng_write_header_to_file, PCAPNG_PEN};
@@ -40,17 +40,17 @@ impl PcapNg {
             let mut path_bytes = self.file_path.as_os_str().as_bytes().to_vec();
             path_bytes.push(0);
             let fh = match self.mode {
-                #[cfg(not(feature="macos"))]
+                #[cfg(feature="debian")]
                 PcapNgOpenMode::Write => fopen(path_bytes.as_ptr(), "wb\0".as_ptr()),
-                #[cfg(feature="macos")]
+                #[cfg(not(feature="debian"))]
                 PcapNgOpenMode::Write => fopen(path_bytes.as_ptr() as *const i8, "wb\0".as_ptr() as *const c_char),
-                #[cfg(not(feature="macos"))]
+                #[cfg(feature="debian")]
                 PcapNgOpenMode::Append => fopen(path_bytes.as_ptr(), "a\0".as_ptr()),
-                #[cfg(feature="macos")]
+                #[cfg(not(feature="debian"))]
                 PcapNgOpenMode::Append => fopen(path_bytes.as_ptr() as *const i8, "a\0".as_ptr() as *const c_char),
-                #[cfg(not(feature="macos"))]
+                #[cfg(feature="debian")]
                 PcapNgOpenMode::Read => fopen(path_bytes.as_ptr(), "r\0".as_ptr()),
-                #[cfg(feature="macos")]
+                #[cfg(not(feature="debian"))]
                 PcapNgOpenMode::Read => fopen(path_bytes.as_ptr() as *const i8, "r\0".as_ptr() as *const c_char),
             };
 

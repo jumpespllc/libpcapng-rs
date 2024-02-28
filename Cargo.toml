@@ -20,4 +20,4 @@ members = ["libpcapng-sys"]
 
 [features]
 static = ["libpcapng-sys/static"]
-macos = []
+debian = []
