@@ -12,6 +12,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - run: sudo apt install build-essential cmake libwandio1 libwandio1-dev pybind11-dev python3-pybind11
     - name: Build
       run: cargo build --verbose
     - name: Run tests
