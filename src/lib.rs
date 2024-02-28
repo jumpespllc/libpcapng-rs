@@ -9,8 +9,11 @@
 //!
 //! The main features provided at the moment are:
 //!
-//! -
-//! -
+//! - Create new PCAP file
+//! - Append to existing PCAP file
+//! - Write network packet frames with and without a timestamp
+//! - Write custom frames
+//! - Read frames from pcap
 //!
 //! ## Installation
 //!

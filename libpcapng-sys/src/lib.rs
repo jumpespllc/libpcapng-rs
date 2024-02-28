@@ -1,3 +1,24 @@
+//! native bindings to  [libpcapng].
+//!
+//! ## The C library
+//!
+//! `libpcapng-sys` provides native bindings to [libpcapng](https://github.com/stricaud/libpcapng).
+//!
+//! ## Installation
+//!
+//! This crate is meant to be used by `libpcapng-rs` module and is just bindings to the c library
+//!
+//! ## Build Requirements
+//!
+//! * the GNU toolchain
+//! * GNU `make`
+//! * `wandio`
+//! * `pybind11`
+//! * `cmake`
+
+#![forbid(missing_docs)]
+#![allow(clippy::type_complexity)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
