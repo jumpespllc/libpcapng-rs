@@ -9,10 +9,14 @@ use libc::{fclose, fflush, FILE, fopen, fwrite, malloc, size_t};
 use libpcapng_sys::{libpcapng_custom_data_block_size, libpcapng_custom_data_block_write, libpcapng_fp_read, libpcapng_write_enhanced_packet_to_file, libpcapng_write_enhanced_packet_with_time_to_file, libpcapng_write_header_to_file, PCAPNG_PEN};
 use crate::PcapNgError::{FileOpenError, FileNotOpen, OperationOnlySupportedInReadMode, OperationOnlySupportedInWriteMode};
 
+/// Type for casting callback function a mutable void pointer
 pub type VoidPtr = *mut c_void;
+
+/// Type for casting a void pointer to the callback function signature
 pub type CbFn = fn(u32, u32, u32, Vec<u8>);
 
 
+/// A struct which provides an interface to interact with the libpcapng functions in a cohesive way
 pub struct PcapNg {
     file_path: PathBuf,
     file_handle: Option<*mut FILE>,
@@ -20,6 +24,8 @@ pub struct PcapNg {
 }
 
 impl PcapNg {
+
+    /// The constructor
     pub fn new<P: Into<PathBuf>>(path: P, mode: PcapNgOpenMode) -> Self {
         PcapNg {
             file_path: path.into(),
@@ -28,6 +34,7 @@ impl PcapNg {
         }
     }
 
+    /// Opens the pcap file
     pub fn open(&mut self) -> crate::Result<()> {
         unsafe {
             let mut path_bytes = self.file_path.as_os_str().as_bytes().to_vec();
@@ -50,17 +57,14 @@ impl PcapNg {
             if fh.is_null() {
                 Err(FileOpenError)
             } else {
-                match self.mode {
-                    PcapNgOpenMode::Write => { libpcapng_write_header_to_file(fh); }
-                    _ => (),
-                }
+                if self.mode == PcapNgOpenMode::Write { libpcapng_write_header_to_file(fh); }
                 self.file_handle = Some(fh);
                 Ok(())
             }
         }
     }
 
-
+    /// Write a custom frame to the pcap
     pub fn write_custom(&mut self, data: Vec<u8>) -> crate::Result<()> {
         if self.mode == PcapNgOpenMode::Read {
             return Err(OperationOnlySupportedInWriteMode);
@@ -79,6 +83,8 @@ impl PcapNg {
             }
         }
     }
+
+    /// Writes a packet frame to the pcap
     pub fn write_packet(&mut self, data: Vec<u8>) -> crate::Result<()> {
         if self.mode == PcapNgOpenMode::Read {
             return Err(OperationOnlySupportedInWriteMode);
@@ -95,14 +101,14 @@ impl PcapNg {
         }
     }
 
+    /// Reads all the frames from a pcap passing them to the callback function provided
     pub fn read_packets(&mut self, callback_fn: Option<CbFn>) -> crate::Result<()> {
         if self.mode != PcapNgOpenMode::Read {
             return Err(OperationOnlySupportedInReadMode);
         }
         unsafe {
             if let Some(fh) = self.file_handle {
-                //let buffer = malloc(10) as *mut c_void;
-                let callback_function = callback_fn.map(|callback_function| { transmute::<CbFn, VoidPtr>(callback_function) }).unwrap_or(null_mut());
+                let callback_function = callback_fn.map(|callback_function| { callback_function as *mut libc::c_void }).unwrap_or(null_mut());
                 libpcapng_fp_read(fh, Some(callback), callback_function);
                 Ok(())
             } else {
@@ -110,6 +116,8 @@ impl PcapNg {
             }
         }
     }
+
+    /// Writes a packet to the pcap including the timestamp
     pub fn write_packet_with_time(&mut self, data: Vec<u8>, timestamp: u32) -> crate::Result<()> {
         if self.mode == PcapNgOpenMode::Read {
             return Err(OperationOnlySupportedInWriteMode);
@@ -126,6 +134,7 @@ impl PcapNg {
         }
     }
 
+    /// Close the open file handle
     pub fn close(&mut self) {
         unsafe {
             if let Some(fh) = self.file_handle {
@@ -139,7 +148,7 @@ impl PcapNg {
 
 #[no_mangle]
 unsafe extern "C" fn callback(block_counter: u32, block_type: u32, block_total_length: u32, data: *mut c_uchar, userdata: *mut c_void) -> c_int {
-    let bytes: Vec<u8> = std::slice::from_raw_parts(data, block_total_length as usize - 8).iter().map(|x| { x.to_owned() as u8 }).collect();
+    let bytes: Vec<u8> = std::slice::from_raw_parts(data, block_total_length as usize - 8).iter().map(|x| { x.to_owned() }).collect();
     if let Some(fn_ptr) = userdata.as_mut() {
         let cb = transmute::<VoidPtr, CbFn>(fn_ptr);
         cb(block_counter, block_type, block_total_length, bytes.to_owned());
@@ -147,9 +156,13 @@ unsafe extern "C" fn callback(block_counter: u32, block_type: u32, block_total_l
     0
 }
 
+/// The mode for opening the pcap file
 #[derive(Debug, Eq, PartialEq)]
 pub enum PcapNgOpenMode {
+    /// This mode opens in write mode and will write the header to the beginning since it will be a new pcap file
     Write,
+    /// Opens in write mode to append to an existing pcap file
     Append,
+    /// Opens in read mode to read from pcap
     Read,
 }
