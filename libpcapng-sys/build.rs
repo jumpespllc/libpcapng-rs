@@ -17,17 +17,8 @@ fn build() {
 #[cfg(feature = "static")]
 fn build() {
     let mut proc = Command::new("git")
-        .arg("submodule")
-        .arg("init")
-        .spawn()
-        .expect("error executing git command");
-    let s = proc.wait().unwrap();
-    if !s.success() {
-        panic!("failed to init submodule")
-    }
-    let mut proc = Command::new("git")
-        .arg("submodule")
-        .arg("update")
+        .arg("clone")
+        .arg("https://github.com/stricaud/libpcapng.git")
         .spawn()
         .expect("error executing git command");
     let s = proc.wait().unwrap();
