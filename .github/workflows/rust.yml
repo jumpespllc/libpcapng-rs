@@ -28,3 +28,4 @@ jobs:
           path: '.'
           args: --no-verify
           dry-run: true
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
