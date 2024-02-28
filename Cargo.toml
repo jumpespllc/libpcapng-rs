@@ -1,6 +1,6 @@
 [package]
 name = "libpcapng-rs"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["Bob R <nop@jumpesp.com>"]
 repository = "https://github.com/jumpespllc/libpcapng-rs"
