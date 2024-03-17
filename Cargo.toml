@@ -2,7 +2,7 @@
 name = "libpcapng-rs"
 version = "0.1.4"
 edition = "2021"
-authors = ["Bob R <nop@jumpesp.com>"]
+authors = ["NOP <nop@jumpesp.com>"]
 repository = "https://github.com/jumpespllc/libpcapng-rs"
 license = "MIT"
 description = "Rust wrapper for libpcapng library"
